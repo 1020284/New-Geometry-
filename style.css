@@ -77,13 +77,12 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
-    /* use the uploaded gif as the page background */
-    /* ensure the full face stays visible by containing instead of covering */
-    background-image: url('kanye.gif');
-    background-repeat: no-repeat;
-    background-position: center top;
-    background-size: contain;
-    background-attachment: fixed;
+    /* use three copies of the gif to fill the width */
+    background-image: url('kanye.gif'), url('kanye.gif'), url('kanye.gif');
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-position: left top, center top, right top;
+    background-size: contain, contain, contain;
+    background-attachment: fixed, fixed, fixed;
     color: var(--text);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 400;
