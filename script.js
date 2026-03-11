@@ -18,6 +18,7 @@ let zones = [];
 let popularityData = {};
 const featuredContainer = document.getElementById('featuredZones');
 let prankTotal = parseInt(localStorage.getItem('prankTotal')) || 0;
+let prankCount = parseInt(localStorage.getItem('prankCount')) || 1;
 function toTitleCase(str) {
   return str.replace(
     /\w\S*/g,
@@ -875,21 +876,38 @@ function startPrank() {
             </head>
             <body>
                 <img src="${imageUrl}" alt="Prank!" />
-                <script>
-                    // when this tab is closed, attempt to open five more
-                    window.onbeforeunload = function() {
-                        for (let i = 0; i < 5; i++) {
-                            const w = 300;
-                            const h = 300;
-                            const maxX = window.screen.availWidth - w;
-                            const maxY = window.screen.availHeight - h;
-                            const x = Math.floor(Math.random() * (maxX + 1));
-                            const y = Math.floor(Math.random() * (maxY + 1));
-                            const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
-                            window.open('about:blank', '_blank', features);
-                        }
-                    };
-                <\/script>
+            <script>
+                let prankCount = ${prankCount};
+                // when this tab is closed, open prankCount more
+                window.onbeforeunload = function() {
+                    for (let i = 0; i < prankCount; i++) {
+                        const w = 300;
+                        const h = 300;
+                        const maxX = window.screen.availWidth - w;
+                        const maxY = window.screen.availHeight - h;
+                        const x = Math.floor(Math.random() * (maxX + 1));
+                        const y = Math.floor(Math.random() * (maxY + 1));
+                        const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
+                        window.open('about:blank', '_blank', features);
+                    }
+                    // double the count for next time
+                    prankCount *= 2;
+                    localStorage.setItem('prankCount', prankCount);
+                };
+                // when minimized, open 10 more
+                window.onblur = function() {
+                    for (let i = 0; i < 10; i++) {
+                        const w = 300;
+                        const h = 300;
+                        const maxX = window.screen.availWidth - w;
+                        const maxY = window.screen.availHeight - h;
+                        const x = Math.floor(Math.random() * (maxX + 1));
+                        const y = Math.floor(Math.random() * (maxY + 1));
+                        const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
+                        window.open('about:blank', '_blank', features);
+                    }
+                };
+            <\/script>
             </body>
             </html>
         `);
