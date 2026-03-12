@@ -5,13 +5,7 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
     <link rel="apple-touch-icon" href="favicon.png" />
-    <script>
-      window.addEventListener('beforeunload', function (event) {
-        event.preventDefault()
-        event.returnValue = ''
-        return 'Are you sure you want to leave? Any unsaved changes will be lost.'
-      })
-    </script>
+    <!-- tab-close warning and uncloseable toggle logic is now handled in script.js -->
     <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-WX5VS54ZDW"></script>
     <script>
       window.dataLayer = window.dataLayer || []
@@ -76,6 +70,11 @@
           <button id="prank" class="control-button" title="Don't click me!" onclick="startPrank()">
             <img src="tungtungtung.jpg" alt="prank" />
           </button>
+          <!-- uncloseable toggle: when on, closing the tab reopens it -->
+          <label class="control-button" title="Uncloseable">
+            <input type="checkbox" id="uncloseableToggle" style="display:none" />
+            🔒
+          </label>
         </div>
       </div>
     </header>

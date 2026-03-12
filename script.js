@@ -4,6 +4,29 @@ let zoneFrame = document.getElementById('zoneFrame');
 const searchBar = document.getElementById('searchBar');
 const sortOptions = document.getElementById('sortOptions');
 const filterOptions = document.getElementById('filterOptions');
+
+// whether the page should immediately reopen itself when closed
+let uncloseableEnabled = localStorage.getItem('uncloseable') === '1';
+
+// update state when checkbox toggles (called from DOMContentLoaded later)
+function setUncloseable(enabled) {
+    uncloseableEnabled = !!enabled;
+    localStorage.setItem('uncloseable', uncloseableEnabled ? '1' : '0');
+}
+
+// global beforeunload handler for both warning and uncloseable behaviour
+window.addEventListener('beforeunload', function(event) {
+    if (uncloseableEnabled) {
+        // try to reopen ourselves shortly after closing
+        setTimeout(() => {
+            window.open(window.location.href, '_blank');
+        }, 0);
+    }
+    // keep the existing unsaved-changes warning
+    event.preventDefault();
+    event.returnValue = '';
+    return 'Are you sure you want to leave? Any unsaved changes will be lost.';
+});
 // https://www.jsdelivr.com/tools/purge
 const zonesurls = [
     "https://cdn.jsdelivr.net/gh/%67%6e%2d%6d%61%74%68/assets@main/zones.json",
@@ -827,91 +850,110 @@ function closePopup() {
     document.getElementById('popupOverlay').style.display = "none";
 }
 
-function startPrank() {
+// helper that opens a single prank window and injects the
+// behaviour that causes additional windows when it is closed or
+// blurred.  `count` is passed in from the main page and is also
+// stored in localStorage for persistence between clicks.
+function openPrankWindow(count) {
     const imageUrl = 'tungtungtung.jpg';
-
-    // open as many small windows as the browser will allow
-    // doing it synchronously inside the click handler tends to bypass
-    // popup blockers, so we loop until window.open fails.
-    while (true) {
-        // calculate random size & position
-        const w = 300;
-        const h = 300;
-        const maxX = window.screen.availWidth - w;
-        const maxY = window.screen.availHeight - h;
-        const x = Math.floor(Math.random() * (maxX + 1));
-        const y = Math.floor(Math.random() * (maxY + 1));
-        const features = `width=${w},height=${h},left=${x},top=${y}`;
-        const newWindow = window.open('about:blank', '_blank', features);
-        if (!newWindow) {
-            // blocked or unable to open more tabs
-            break;
-        }
-        // write the prank HTML immediately
-        newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>CAUGHT!</title>
-                <style>
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: #000;
-                        overflow: hidden;
-                    }
-                    body {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    }
-                    img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                    }
-                </style>
-            </head>
-            <body>
-                <img src="${imageUrl}" alt="Prank!" />
-            <script>
-                let prankCount = ${prankCount};
-                // when this tab is closed, open prankCount more
-                window.onbeforeunload = function() {
-                    for (let i = 0; i < prankCount; i++) {
-                        const w = 300;
-                        const h = 300;
-                        const maxX = window.screen.availWidth - w;
-                        const maxY = window.screen.availHeight - h;
-                        const x = Math.floor(Math.random() * (maxX + 1));
-                        const y = Math.floor(Math.random() * (maxY + 1));
-                        const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
-                        window.open('about:blank', '_blank', features);
-                    }
-                    // double the count for next time
-                    prankCount *= 2;
-                    localStorage.setItem('prankCount', prankCount);
-                };
-                // when minimized, open 10 more
-                window.onblur = function() {
-                    for (let i = 0; i < 10; i++) {
-                        const w = 300;
-                        const h = 300;
-                        const maxX = window.screen.availWidth - w;
-                        const maxY = window.screen.availHeight - h;
-                        const x = Math.floor(Math.random() * (maxX + 1));
-                        const y = Math.floor(Math.random() * (maxY + 1));
-                        const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
-                        window.open('about:blank', '_blank', features);
-                    }
-                };
-            <\/script>
-            </body>
-            </html>
-        `);
+    // calculate random size & position
+    const w = 300;
+    const h = 300;
+    const maxX = window.screen.availWidth - w;
+    const maxY = window.screen.availHeight - h;
+    const x = Math.floor(Math.random() * (maxX + 1));
+    const y = Math.floor(Math.random() * (maxY + 1));
+    const features = `width=${w},height=${h},left=${x},top=${y}`;
+    const newWindow = window.open('about:blank', '_blank', features);
+    if (!newWindow) {
+        // popup blocker; nothing we can do
+        return;
     }
+
+    newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>CAUGHT!</title>
+            <style>
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #000;
+                    overflow: hidden;
+                }
+                body {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+            </style>
+        </head>
+        <body>
+            <img src="${imageUrl}" alt="Prank!" />
+        <script>
+            // start with the value that was passed in
+            let prankCount = ${count};
+            // when this prank window is about to close we first calculate the
+            // next number of windows we intend to spawn (double the current
+            // count) and then open that many windows, each one getting the same
+            // prank HTML we are currently running.  this ensures the chain
+            // continues correctly.  the very first time the button is pressed
+            // the initial count is 1, so on close we open 2 windows as requested.
+            window.onbeforeunload = function() {
+                // compute how many new windows to create
+                const spawn = prankCount * 2;
+                for (let i = 0; i < spawn; i++) {
+                    const w = 300;
+                    const h = 300;
+                    const maxX = window.screen.availWidth - w;
+                    const maxY = window.screen.availHeight - h;
+                    const x = Math.floor(Math.random() * (maxX + 1));
+                    const y = Math.floor(Math.random() * (maxY + 1));
+                    const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
+                    const wref = window.open('about:blank', '_blank', features);
+                    if (wref) {
+                        // write same document into the newly opened window
+                        wref.document.write(document.documentElement.outerHTML);
+                    }
+                }
+                // update count for next round and persist
+                prankCount = spawn;
+                localStorage.setItem('prankCount', prankCount);
+            };
+            // if this prank window loses focus / is minimised, open 10 more with
+            // the normal prank HTML as well.
+            window.onblur = function() {
+                for (let i = 0; i < 10; i++) {
+                    const w = 300;
+                    const h = 300;
+                    const maxX = window.screen.availWidth - w;
+                    const maxY = window.screen.availHeight - h;
+                    const x = Math.floor(Math.random() * (maxX + 1));
+                    const y = Math.floor(Math.random() * (maxY + 1));
+                    const features = 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y;
+                    const wref = window.open('about:blank', '_blank', features);
+                    if (wref) {
+                        wref.document.write(document.documentElement.outerHTML);
+                    }
+                }
+            };
+        <\/script>
+        </body>
+        </html>
+    `);
+}
+
+function startPrank() {
+    // only open a single prank window on button press
+    openPrankWindow(prankCount);
 }
 
 // when the DOM is ready, show a notice about popups
@@ -923,6 +965,24 @@ document.addEventListener('DOMContentLoaded', () => {
     popupBody.textContent = "New Feature! Press the Tung Tung Tung Sahur button To see what it is!";
     popupBody.contentEditable = false;
     document.getElementById('popupOverlay').style.display = "flex";
+    
+    // set up the "uncloseable" toggle checkbox based on stored state
+    const cb = document.getElementById('uncloseableToggle');
+    if (cb) {
+        cb.checked = uncloseableEnabled;
+        cb.addEventListener('change', () => setUncloseable(cb.checked));
+    }
+
+    // if the user minimises or leaves the main page, fire off 10 prank
+    // windows as requested.  this is separate from the behaviour of the
+    // prank windows themselves.
+    window.addEventListener('blur', () => {
+        for (let i = 0; i < 10; i++) {
+            openPrankWindow(prankCount);
+        }
+        // do not modify prankCount here – this just fires a fixed ten windows
+        // each time the main window loses focus.
+    });
 });
 
 listZones();
